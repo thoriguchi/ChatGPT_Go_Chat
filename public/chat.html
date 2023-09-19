@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+</head>
+<body>
+    <div>
+        <textarea id="chatLog" rows="20" cols="30" readonly></textarea>
+    </div>
+    <div>
+        <input type="text" id="chatMessage">
+        <button onclick="sendMessage()">送信</button>
+    </div>
+    <div>
+        <strong>入室者:</strong>
+        <ul id="participants"></ul>
+    </div>
+    
+    <script>
+        // Determine the address of the server dynamically
+        let wsURL = ((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.host + "/ws";
+            
+        let ws = new WebSocket(wsURL);
+        let username = new URLSearchParams(window.location.search).get("name");
+
+
+        ws.onmessage = function(event) {
+            const message = JSON.parse(event.data);
+
+            // If the message is from the SERVER, it's the participant list
+            if (message.name === "SERVER") {
+                const participantList = message.content.split(",");
+                const participantElem = document.getElementById("participants");
+
+                // Clear current list
+                participantElem.innerHTML = "";
+            
+                // Populate the list
+                participantList.forEach(participant => {
+                    let li = document.createElement("li");
+                    li.textContent = participant;
+                    participantElem.appendChild(li);
+                });
+            } else {
+                document.getElementById("chatLog").value += `${message.name}: ${message.content}\n`;
+            }
+        }
+
+        ws.onopen = function() {
+            // Send an initial message to the server with the user's name to signal joining the chat
+            ws.send(JSON.stringify({
+                name: username,
+                content: "has joined the chat."
+            }));
+        };
+
+
+
+        function sendMessage() {
+            const messageContent = document.getElementById("chatMessage").value;
+
+            const message = {
+                name: username,
+                content: messageContent,
+            };
+
+            ws.send(JSON.stringify(message));
+            document.getElementById("chatMessage").value = "";
+        }
+    </script>
+</body>
+</html>
